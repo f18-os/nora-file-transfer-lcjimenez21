@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-import sys, os, socket, params, time
+import sys, os, socket, params, time, threading
 from threading import Thread
 from framedSock import FramedStreamSock
 
@@ -23,24 +23,38 @@ lsock.bind(bindAddr)
 lsock.listen(5)
 print("listening on:", bindAddr)
 
+lock = threading.Lock()
+newPath = (os.getcwd()+'/serverFiles')
+if not os.path.exists(newPath):
+    os.makedirs(newPath)
+    pass
+
 class ServerThread(Thread):
     requestCount = 0            # one instance / class
     def __init__(self, sock, debug):
         Thread.__init__(self, daemon=True)
         self.fsock, self.debug = FramedStreamSock(sock, debug), debug
         self.start()
+
     def run(self):
+        lock.acquire()
         while True:
-            msg = self.fsock.receivemsg()
-            if not msg:
+            header = self.fsock.receivemsg()
+            if not header:
+                lock.release()
                 if self.debug: print(self.fsock, "server thread done")
                 return
+            fileName = header.decode()
+            payload = self.fsock.receivemsg()
+            path = (newPath +'/'+ fileName)
+            out_file = open(path, "wb+") #[w]rite as [b]inary
+            out_file.write(payload)
+            out_file.close()
             requestNum = ServerThread.requestCount
             time.sleep(0.001)
             ServerThread.requestCount = requestNum + 1
-            msg = ("%s! (%d)" % (msg, requestNum)).encode()
-            self.fsock.sendmsg(msg)
-
+            print("Done! %s" % requestNum )
+        lock.release()
 
 while True:
     sock, addr = lsock.accept()

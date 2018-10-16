@@ -30,6 +30,9 @@ except:
     print("Can't parse server:port from '%s'" % server)
     sys.exit(1)
 
+print("Name of file to transfer:")
+args = input()
+
 class ClientThread(Thread):
     def __init__(self, serverHost, serverPort, debug):
         Thread.__init__(self, daemon=False)
@@ -62,14 +65,29 @@ class ClientThread(Thread):
 
        fs = FramedStreamSock(s, debug=debug)
 
-
-       print("sending hello world")
-       fs.sendmsg(b"hello world")
-       print("received:", fs.receivemsg())
-
-       fs.sendmsg(b"hello world")
-       print("received:", fs.receivemsg())
+       if ".txt" in args:
+           header = str.encode(args)# Get file name
+           file = open(args, "r")
+           data = file.read().replace('\n', ' ')
+           data = data.encode()
+           print("Sending %s to Server..." % args)
+           fs.sendmsg(header) #Name of file
+           fs.sendmsg(data) #Content from file
+           # print("Received:", framedReceive(s, debug))#debug tool
+       else:
+           byte_args = str.encode(args)# Get file name
+           file = open(args, "rb")
+           print("sending %s" % args)
+           fs.sendmsg(byte_args) #Name of file
+           fs.sendmsg(file.read()) #Content from file
+           # print("received:", framedReceive(s, debug))
+           pass
+       # print("sending hello world")
+       # fs.sendmsg(b"hello world")
+       # print("received:", fs.receivemsg())
+       #
+       # fs.sendmsg(b"hello world")
+       # print("received:", fs.receivemsg())
 
 for i in range(100):
     ClientThread(serverHost, serverPort, debug)
-
